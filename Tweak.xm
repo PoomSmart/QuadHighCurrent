@@ -1,5 +1,5 @@
-#import "Header.h"
 #import "../PS.h"
+#import "Header.h"
 
 #import <dlfcn.h>
 #import <mach/port.h>
@@ -53,14 +53,14 @@ SInt32 (*GetCFPreferenceNumber)(CFStringRef const, CFStringRef const, SInt32) = 
         case 10:
             dlopen("/System/Library/MediaCapture/H10ISP.mediacapture", RTLD_LAZY);
             hxRef = MSGetImageByName("/System/Library/MediaCapture/H10ISP.mediacapture");
-            SetTorchLevel = (int (*)(CFNumberRef, HXISPCaptureStreamRef, HXISPCaptureDeviceRef))MSFindSymbol(hxRef, "__ZL13SetTorchLevelPKvP19H10ISPCaptureStreamP19H10ISPCaptureDevice");
-            GetCFPreferenceNumber = (SInt32 (*)(CFStringRef const, CFStringRef const, SInt32))MSFindSymbol(hxRef, "__ZN6H10ISP27H10ISPGetCFPreferenceNumberEPK10__CFStringS2_i");
+            SetTorchLevel = (int (*)(CFNumberRef, HXISPCaptureStreamRef, HXISPCaptureDeviceRef))PSFindSymbolCallable(hxRef, "__ZL13SetTorchLevelPKvP19H10ISPCaptureStreamP19H10ISPCaptureDevice");
+            GetCFPreferenceNumber = (SInt32 (*)(CFStringRef const, CFStringRef const, SInt32))PSFindSymbolCallable(hxRef, "__ZN6H10ISP27H10ISPGetCFPreferenceNumberEPK10__CFStringS2_i");
             break;
         case 9:
             dlopen("/System/Library/MediaCapture/H9ISP.mediacapture", RTLD_LAZY);
             hxRef = MSGetImageByName("/System/Library/MediaCapture/H9ISP.mediacapture");
-            SetTorchLevel = (int (*)(CFNumberRef, HXISPCaptureStreamRef, HXISPCaptureDeviceRef))MSFindSymbol(hxRef, "__ZL13SetTorchLevelPKvP18H9ISPCaptureStreamP18H9ISPCaptureDevice");
-            GetCFPreferenceNumber = (SInt32 (*)(CFStringRef const, CFStringRef const, SInt32))MSFindSymbol(hxRef, "__ZN5H9ISP26H9ISPGetCFPreferenceNumberEPK10__CFStringS2_i");
+            SetTorchLevel = (int (*)(CFNumberRef, HXISPCaptureStreamRef, HXISPCaptureDeviceRef))PSFindSymbolCallable(hxRef, "__ZL13SetTorchLevelPKvP18H9ISPCaptureStreamP18H9ISPCaptureDevice");
+            GetCFPreferenceNumber = (SInt32 (*)(CFStringRef const, CFStringRef const, SInt32))PSFindSymbolCallable(hxRef, "__ZN5H9ISP26H9ISPGetCFPreferenceNumberEPK10__CFStringS2_i");
             break;
     }
     HBLogDebug(@"SetTorchLevel found: %d", SetTorchLevel != NULL);
