@@ -7,9 +7,13 @@
 
 typedef struct HXISPCaptureStream *HXISPCaptureStreamRef;
 typedef struct HXISPCaptureDevice *HXISPCaptureDeviceRef;
+typedef struct HXISPCaptureGroup *HXISPCaptureGroupRef;
 
 int (*SetTorchLevel)(CFNumberRef, HXISPCaptureStreamRef, HXISPCaptureDeviceRef) = NULL;
+int (*SetTorchLevelWithGroup)(CFNumberRef, HXISPCaptureStreamRef, HXISPCaptureGroupRef, HXISPCaptureDeviceRef) = NULL;
 SInt32 (*GetCFPreferenceNumber)(CFStringRef const, CFStringRef const, SInt32) = NULL;
+
+%group SetTorchLevelHook
 
 %hookf(int, SetTorchLevel, CFNumberRef level, HXISPCaptureStreamRef stream, HXISPCaptureDeviceRef device) {
     BOOL enabled = GetCFPreferenceNumber(key, kDomain, 0);
@@ -21,6 +25,23 @@ SInt32 (*GetCFPreferenceNumber)(CFStringRef const, CFStringRef const, SInt32) = 
     *highCurrentEnabled = original;
     return result;
 }
+
+%end
+
+%group SetTorchLevelWithGroupHook
+
+%hookf(int, SetTorchLevelWithGroup, CFNumberRef level, HXISPCaptureStreamRef stream, HXISPCaptureGroupRef group, HXISPCaptureDeviceRef device) {
+    BOOL enabled = GetCFPreferenceNumber(key, kDomain, 0);
+    bool *highCurrentEnabled = (bool *)((uintptr_t)stream + 0x90C);
+    bool original = *highCurrentEnabled;
+    if (enabled)
+        *highCurrentEnabled = YES;
+    int result = %orig(level, stream, group, device);
+    *highCurrentEnabled = original;
+    return result;
+}
+
+%end
 
 %ctor {
     int HVer = 0;
@@ -54,16 +75,26 @@ SInt32 (*GetCFPreferenceNumber)(CFStringRef const, CFStringRef const, SInt32) = 
             dlopen("/System/Library/MediaCapture/H10ISP.mediacapture", RTLD_LAZY);
             hxRef = MSGetImageByName("/System/Library/MediaCapture/H10ISP.mediacapture");
             SetTorchLevel = (int (*)(CFNumberRef, HXISPCaptureStreamRef, HXISPCaptureDeviceRef))_PSFindSymbolCallable(hxRef, "__ZL13SetTorchLevelPKvP19H10ISPCaptureStreamP19H10ISPCaptureDevice");
+            if (SetTorchLevel == NULL)
+                SetTorchLevelWithGroup = (int (*)(CFNumberRef, HXISPCaptureStreamRef, HXISPCaptureGroupRef, HXISPCaptureDeviceRef))_PSFindSymbolCallable(hxRef, "__ZL13SetTorchLevelPKvP19H10ISPCaptureStreamP18H10ISPCaptureGroupP19H10ISPCaptureDevice");
             GetCFPreferenceNumber = (SInt32 (*)(CFStringRef const, CFStringRef const, SInt32))_PSFindSymbolCallable(hxRef, "__ZN6H10ISP27H10ISPGetCFPreferenceNumberEPK10__CFStringS2_i");
             break;
         case 9:
             dlopen("/System/Library/MediaCapture/H9ISP.mediacapture", RTLD_LAZY);
             hxRef = MSGetImageByName("/System/Library/MediaCapture/H9ISP.mediacapture");
             SetTorchLevel = (int (*)(CFNumberRef, HXISPCaptureStreamRef, HXISPCaptureDeviceRef))_PSFindSymbolCallable(hxRef, "__ZL13SetTorchLevelPKvP18H9ISPCaptureStreamP18H9ISPCaptureDevice");
+            if (SetTorchLevel == NULL)
+                SetTorchLevelWithGroup = (int (*)(CFNumberRef, HXISPCaptureStreamRef, HXISPCaptureGroupRef, HXISPCaptureDeviceRef))_PSFindSymbolCallable(hxRef, "__ZL13SetTorchLevelPKvP18H9ISPCaptureStreamP17H9ISPCaptureGroupP18H9ISPCaptureDevice");
             GetCFPreferenceNumber = (SInt32 (*)(CFStringRef const, CFStringRef const, SInt32))_PSFindSymbolCallable(hxRef, "__ZN5H9ISP26H9ISPGetCFPreferenceNumberEPK10__CFStringS2_i");
             break;
     }
     HBLogDebug(@"SetTorchLevel found: %d", SetTorchLevel != NULL);
+    HBLogDebug(@"SetTorchLevelWithGroup found: %d", SetTorchLevelWithGroup != NULL);
     HBLogDebug(@"GetCFPreferenceNumber found: %d", GetCFPreferenceNumber != NULL);
+    if (SetTorchLevelWithGroup) {
+        %init(SetTorchLevelWithGroupHook);
+    } else {
+        %init(SetTorchLevelHook);
+    }
     %init;
 }
