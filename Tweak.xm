@@ -32,7 +32,7 @@ SInt32 (*GetCFPreferenceNumber)(CFStringRef const, CFStringRef const, SInt32) = 
 
 %hookf(int, SetTorchLevelWithGroup, CFNumberRef level, HXISPCaptureStreamRef stream, HXISPCaptureGroupRef group, HXISPCaptureDeviceRef device) {
     BOOL enabled = GetCFPreferenceNumber(key, kDomain, 0);
-    bool *highCurrentEnabled = (bool *)((uintptr_t)stream + 0x90C);
+    bool *highCurrentEnabled = (bool *)((uintptr_t)stream + 0x590);
     bool original = *highCurrentEnabled;
     if (enabled)
         *highCurrentEnabled = YES;
