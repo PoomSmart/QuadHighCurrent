@@ -1,4 +1,5 @@
-#import "../PS.h"
+#import "../PSHeader/Misc.h"
+#import <HBLog.h>
 #import "Header.h"
 
 #import <dlfcn.h>
@@ -52,41 +53,53 @@ SInt32 (*GetCFPreferenceNumber)(CFStringRef const, CFStringRef const, SInt32) = 
         mach_port_t (*IOServiceGetMatchingService)(mach_port_t masterPort, CFDictionaryRef matching) = (mach_port_t (*)(mach_port_t, CFDictionaryRef))dlsym(IOKit, "IOServiceGetMatchingService");
         kern_return_t (*IOObjectRelease)(mach_port_t object) = (kern_return_t (*)(mach_port_t))dlsym(IOKit, "IOObjectRelease");
         if (kIOMasterPortDefault && IOServiceGetMatchingService && IOObjectRelease) {
-            mach_port_t h10 = IOServiceGetMatchingService(*kIOMasterPortDefault, IOServiceMatching("AppleH10CamIn"));
-            if (h10) {
-                HVer = 10;
-                IOObjectRelease(h10);
-            }
-            if (HVer == 0) {
-                mach_port_t h9 = IOServiceGetMatchingService(*kIOMasterPortDefault, IOServiceMatching("AppleH9CamIn"));
-                if (h9) {
-                    HVer = 9;
-                    IOObjectRelease(h9);
+            char AppleHXCamIn[14];
+            for (HVer = 13; HVer > 9; --HVer) {
+                sprintf(AppleHXCamIn, "AppleH%dCamIn", HVer);
+                mach_port_t hx = IOServiceGetMatchingService(*kIOMasterPortDefault, IOServiceMatching(AppleHXCamIn));
+                if (hx) {
+                    IOObjectRelease(hx);
+                    break;
                 }
+            }
+            if (HVer == 9) {
+                mach_port_t h9 = IOServiceGetMatchingService(*kIOMasterPortDefault, IOServiceMatching("AppleH9CamIn"));
+                if (h9)
+                    IOObjectRelease(h9);
+                else
+                    HVer = 0;
             }
         }
         dlclose(IOKit);
         HBLogDebug(@"Detected ISP version: %d", HVer);
     }
     if (HVer == 0) return;
-    MSImageRef hxRef;
+    char imagePath[49];
+    sprintf(imagePath, "/System/Library/MediaCapture/H%dISP.mediacapture", HVer);
+    dlopen(imagePath, RTLD_LAZY);
+    MSImageRef hxRef = MSGetImageByName(imagePath);
     switch (HVer) {
-        case 10:
-            dlopen("/System/Library/MediaCapture/H10ISP.mediacapture", RTLD_LAZY);
-            hxRef = MSGetImageByName("/System/Library/MediaCapture/H10ISP.mediacapture");
-            SetTorchLevel = (int (*)(CFNumberRef, HXISPCaptureStreamRef, HXISPCaptureDeviceRef))_PSFindSymbolCallable(hxRef, "__ZL13SetTorchLevelPKvP19H10ISPCaptureStreamP19H10ISPCaptureDevice");
-            if (SetTorchLevel == NULL)
-                SetTorchLevelWithGroup = (int (*)(CFNumberRef, HXISPCaptureStreamRef, HXISPCaptureGroupRef, HXISPCaptureDeviceRef))_PSFindSymbolCallable(hxRef, "__ZL13SetTorchLevelPKvP19H10ISPCaptureStreamP18H10ISPCaptureGroupP19H10ISPCaptureDevice");
-            GetCFPreferenceNumber = (SInt32 (*)(CFStringRef const, CFStringRef const, SInt32))_PSFindSymbolCallable(hxRef, "__ZN6H10ISP27H10ISPGetCFPreferenceNumberEPK10__CFStringS2_i");
-            break;
-        case 9:
-            dlopen("/System/Library/MediaCapture/H9ISP.mediacapture", RTLD_LAZY);
-            hxRef = MSGetImageByName("/System/Library/MediaCapture/H9ISP.mediacapture");
+        case 9: {
             SetTorchLevel = (int (*)(CFNumberRef, HXISPCaptureStreamRef, HXISPCaptureDeviceRef))_PSFindSymbolCallable(hxRef, "__ZL13SetTorchLevelPKvP18H9ISPCaptureStreamP18H9ISPCaptureDevice");
             if (SetTorchLevel == NULL)
                 SetTorchLevelWithGroup = (int (*)(CFNumberRef, HXISPCaptureStreamRef, HXISPCaptureGroupRef, HXISPCaptureDeviceRef))_PSFindSymbolCallable(hxRef, "__ZL13SetTorchLevelPKvP18H9ISPCaptureStreamP17H9ISPCaptureGroupP18H9ISPCaptureDevice");
             GetCFPreferenceNumber = (SInt32 (*)(CFStringRef const, CFStringRef const, SInt32))_PSFindSymbolCallable(hxRef, "__ZN5H9ISP26H9ISPGetCFPreferenceNumberEPK10__CFStringS2_i");
             break;
+        }
+        default: {
+            char SetTorchLevelWithGroupSymbol[88];
+            sprintf(SetTorchLevelWithGroupSymbol, "__ZL13SetTorchLevelPKvP19H%dISPCaptureStreamP18H%dISPCaptureGroupP19H%dISPCaptureDevice", HVer, HVer, HVer);
+            SetTorchLevelWithGroup = (int (*)(CFNumberRef, HXISPCaptureStreamRef, HXISPCaptureGroupRef, HXISPCaptureDeviceRef))_PSFindSymbolCallable(hxRef, SetTorchLevelWithGroupSymbol);
+            if (SetTorchLevelWithGroup == NULL) {
+                char SetTorchLevelSymbol[67];
+                sprintf(SetTorchLevelSymbol, "__ZL13SetTorchLevelPKvP19H%dISPCaptureStreamP19H%dISPCaptureDevice", HVer, HVer);
+                SetTorchLevel = (int (*)(CFNumberRef, HXISPCaptureStreamRef, HXISPCaptureDeviceRef))_PSFindSymbolCallable(hxRef, SetTorchLevelSymbol);
+            }
+            char GetCFPreferenceNumberSymbol[60];
+            sprintf(GetCFPreferenceNumberSymbol, "__ZN6H10ISP27H%dISPGetCFPreferenceNumberEPK10__CFStringS2_i", HVer);
+            GetCFPreferenceNumber = (SInt32 (*)(CFStringRef const, CFStringRef const, SInt32))_PSFindSymbolCallable(hxRef, GetCFPreferenceNumberSymbol);
+            break;
+        }
     }
     HBLogDebug(@"SetTorchLevel found: %d", SetTorchLevel != NULL);
     HBLogDebug(@"SetTorchLevelWithGroup found: %d", SetTorchLevelWithGroup != NULL);
