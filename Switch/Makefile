@@ -1,11 +1,13 @@
-ARCHS = arm64
+TARGET = iphone:clang:latest:10.0
+ARCHS = arm64 arm64e
 
 include $(THEOS)/makefiles/common.mk
 
 BUNDLE_NAME = QuadHighCurrent
-QuadHighCurrent_FILES = Switch.xm
-QuadHighCurrent_LIBRARIES = flipswitch
-QuadHighCurrent_FRAMEWORKS = UIKit
-QuadHighCurrent_INSTALL_PATH = /Library/Switches
+$(BUNDLE_NAME)_FILES = Switch.xm
+$(BUNDLE_NAME)_CFLAGS = -fobjc-arc
+$(BUNDLE_NAME)_LIBRARIES = flipswitch
+$(BUNDLE_NAME)_FRAMEWORKS = UIKit
+$(BUNDLE_NAME)_INSTALL_PATH = /Library/Switches
 
 include $(THEOS_MAKE_PATH)/bundle.mk

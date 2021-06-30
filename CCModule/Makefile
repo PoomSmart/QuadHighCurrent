@@ -1,12 +1,13 @@
-TARGET = iphone:clang:12.2:10.0
+TARGET = iphone:clang:latest:11.0
 ARCHS = arm64 arm64e
 
 include $(THEOS)/makefiles/common.mk
 
 BUNDLE_NAME = QuadHighCurrentCCModule
-QuadHighCurrentCCModule_BUNDLE_EXTENSION = bundle
-QuadHighCurrentCCModule_FILES = QuadHighCurrentCCModule.m
-QuadHighCurrentCCModule_PRIVATE_FRAMEWORKS = ControlCenterUIKit
-QuadHighCurrentCCModule_INSTALL_PATH = /Library/ControlCenter/Bundles/
+$(BUNDLE_NAME)_BUNDLE_EXTENSION = bundle
+$(BUNDLE_NAME)_FILES = QuadHighCurrentCCModule.m
+$(BUNDLE_NAME)_CFLAGS = -fobjc-arc
+$(BUNDLE_NAME)_PRIVATE_FRAMEWORKS = ControlCenterUIKit
+$(BUNDLE_NAME)_INSTALL_PATH = /Library/ControlCenter/Bundles/
 
 include $(THEOS_MAKE_PATH)/bundle.mk

@@ -54,7 +54,7 @@ SInt32 (*GetCFPreferenceNumber)(CFStringRef const, CFStringRef const, SInt32) = 
         kern_return_t (*IOObjectRelease)(mach_port_t object) = (kern_return_t (*)(mach_port_t))dlsym(IOKit, "IOObjectRelease");
         if (kIOMasterPortDefault && IOServiceGetMatchingService && IOObjectRelease) {
             char AppleHXCamIn[14];
-            for (HVer = 13; HVer > 9; --HVer) {
+            for (HVer = 14; HVer > 9; --HVer) {
                 sprintf(AppleHXCamIn, "AppleH%dCamIn", HVer);
                 mach_port_t hx = IOServiceGetMatchingService(*kIOMasterPortDefault, IOServiceMatching(AppleHXCamIn));
                 if (hx) {
