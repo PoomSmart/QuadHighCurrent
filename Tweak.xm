@@ -1,10 +1,11 @@
-#import "../PSHeader/Misc.h"
+#import <CoreFoundation/CoreFoundation.h>
 #import <HBLog.h>
-#import "Header.h"
 
 #import <dlfcn.h>
 #import <mach/port.h>
 #import <mach/kern_return.h>
+
+#define MAX_HVER 15
 
 typedef struct HXISPCaptureStream *HXISPCaptureStreamRef;
 typedef struct HXISPCaptureDevice *HXISPCaptureDeviceRef;
@@ -12,16 +13,13 @@ typedef struct HXISPCaptureGroup *HXISPCaptureGroupRef;
 
 int (*SetTorchLevel)(CFNumberRef, HXISPCaptureStreamRef, HXISPCaptureDeviceRef) = NULL;
 int (*SetTorchLevelWithGroup)(CFNumberRef, HXISPCaptureStreamRef, HXISPCaptureGroupRef, HXISPCaptureDeviceRef) = NULL;
-SInt32 (*GetCFPreferenceNumber)(CFStringRef const, CFStringRef const, SInt32) = NULL;
 
 %group SetTorchLevelHook
 
 %hookf(int, SetTorchLevel, CFNumberRef level, HXISPCaptureStreamRef stream, HXISPCaptureDeviceRef device) {
-    BOOL enabled = GetCFPreferenceNumber(key, kDomain, 0);
     bool *highCurrentEnabled = (bool *)((uintptr_t)stream + 0x90C);
     bool original = *highCurrentEnabled;
-    if (enabled)
-        *highCurrentEnabled = YES;
+    *highCurrentEnabled = YES;
     int result = %orig(level, stream, device);
     *highCurrentEnabled = original;
     return result;
@@ -32,11 +30,9 @@ SInt32 (*GetCFPreferenceNumber)(CFStringRef const, CFStringRef const, SInt32) = 
 %group SetTorchLevelWithGroupHook
 
 %hookf(int, SetTorchLevelWithGroup, CFNumberRef level, HXISPCaptureStreamRef stream, HXISPCaptureGroupRef group, HXISPCaptureDeviceRef device) {
-    BOOL enabled = GetCFPreferenceNumber(key, kDomain, 0);
     bool *highCurrentEnabled = (bool *)((uintptr_t)stream + 0xA6C);
     bool original = *highCurrentEnabled;
-    if (enabled)
-        *highCurrentEnabled = YES;
+    *highCurrentEnabled = YES;
     int result = %orig(level, stream, group, device);
     *highCurrentEnabled = original;
     return result;
@@ -54,7 +50,7 @@ SInt32 (*GetCFPreferenceNumber)(CFStringRef const, CFStringRef const, SInt32) = 
         kern_return_t (*IOObjectRelease)(mach_port_t object) = (kern_return_t (*)(mach_port_t))dlsym(IOKit, "IOObjectRelease");
         if (kIOMasterPortDefault && IOServiceGetMatchingService && IOObjectRelease) {
             char AppleHXCamIn[14];
-            for (HVer = 14; HVer > 9; --HVer) {
+            for (HVer = MAX_HVER; HVer > 9; --HVer) {
                 sprintf(AppleHXCamIn, "AppleH%dCamIn", HVer);
                 mach_port_t hx = IOServiceGetMatchingService(*kIOMasterPortDefault, IOServiceMatching(AppleHXCamIn));
                 if (hx) {
@@ -83,7 +79,6 @@ SInt32 (*GetCFPreferenceNumber)(CFStringRef const, CFStringRef const, SInt32) = 
             SetTorchLevel = (int (*)(CFNumberRef, HXISPCaptureStreamRef, HXISPCaptureDeviceRef))MSFindSymbol(hxRef, "__ZL13SetTorchLevelPKvP18H9ISPCaptureStreamP18H9ISPCaptureDevice");
             if (SetTorchLevel == NULL)
                 SetTorchLevelWithGroup = (int (*)(CFNumberRef, HXISPCaptureStreamRef, HXISPCaptureGroupRef, HXISPCaptureDeviceRef))MSFindSymbol(hxRef, "__ZL13SetTorchLevelPKvP18H9ISPCaptureStreamP17H9ISPCaptureGroupP18H9ISPCaptureDevice");
-            GetCFPreferenceNumber = (SInt32 (*)(CFStringRef const, CFStringRef const, SInt32))_PSFindSymbolCallable(hxRef, "__ZN5H9ISP26H9ISPGetCFPreferenceNumberEPK10__CFStringS2_i");
             break;
         }
         default: {
@@ -95,19 +90,14 @@ SInt32 (*GetCFPreferenceNumber)(CFStringRef const, CFStringRef const, SInt32) = 
                 sprintf(SetTorchLevelSymbol, "__ZL13SetTorchLevelPKvP19H%dISPCaptureStreamP19H%dISPCaptureDevice", HVer, HVer);
                 SetTorchLevel = (int (*)(CFNumberRef, HXISPCaptureStreamRef, HXISPCaptureDeviceRef))MSFindSymbol(hxRef, SetTorchLevelSymbol);
             }
-            char GetCFPreferenceNumberSymbol[60];
-            sprintf(GetCFPreferenceNumberSymbol, "__ZN6H%dISP27H%dISPGetCFPreferenceNumberEPK10__CFStringS2_i", HVer, HVer);
-            GetCFPreferenceNumber = (SInt32 (*)(CFStringRef const, CFStringRef const, SInt32))_PSFindSymbolCallable(hxRef, GetCFPreferenceNumberSymbol);
             break;
         }
     }
     HBLogDebug(@"SetTorchLevel found: %d", SetTorchLevel != NULL);
     HBLogDebug(@"SetTorchLevelWithGroup found: %d", SetTorchLevelWithGroup != NULL);
-    HBLogDebug(@"GetCFPreferenceNumber found: %d", GetCFPreferenceNumber != NULL);
     if (SetTorchLevelWithGroup) {
         %init(SetTorchLevelWithGroupHook);
     } else {
         %init(SetTorchLevelHook);
     }
-    %init;
 }
