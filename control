@@ -1,7 +1,7 @@
 Package: com.ps.quadhighcurrent
 Name: QuadHighCurrent
 Depends: mobilesubstrate, firmware (>= 10.0), gsc.camera-flash
-Version: 1.0.0
+Version: 1.1.1
 Architecture: iphoneos-arm
 Description: Utilize "high current" for Quad-LEDs devices.
 Author: PoomSmart

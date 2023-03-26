@@ -5,6 +5,8 @@
 #import <mach/port.h>
 #import <mach/kern_return.h>
 
+int HVer = 0;
+
 #define MAX_HVER 15
 
 typedef struct HXISPCaptureStream *HXISPCaptureStreamRef;
@@ -30,7 +32,7 @@ int (*SetTorchLevelWithGroup)(CFNumberRef, HXISPCaptureStreamRef, HXISPCaptureGr
 %group SetTorchLevelWithGroupHook
 
 %hookf(int, SetTorchLevelWithGroup, CFNumberRef level, HXISPCaptureStreamRef stream, HXISPCaptureGroupRef group, HXISPCaptureDeviceRef device) {
-    bool *highCurrentEnabled = (bool *)((uintptr_t)stream + 0xA6C);
+    bool *highCurrentEnabled = HVer > 9 ? (bool *)((uintptr_t)stream + 0xB70) : (bool *)((uintptr_t)stream + 0xA6C);
     bool original = *highCurrentEnabled;
     *highCurrentEnabled = YES;
     int result = %orig(level, stream, group, device);
@@ -41,7 +43,6 @@ int (*SetTorchLevelWithGroup)(CFNumberRef, HXISPCaptureStreamRef, HXISPCaptureGr
 %end
 
 %ctor {
-    int HVer = 0;
     void *IOKit = dlopen("/System/Library/Frameworks/IOKit.framework/IOKit", RTLD_NOW);
     if (IOKit) {
         mach_port_t *kIOMasterPortDefault = (mach_port_t *)dlsym(IOKit, "kIOMasterPortDefault");
@@ -51,7 +52,7 @@ int (*SetTorchLevelWithGroup)(CFNumberRef, HXISPCaptureStreamRef, HXISPCaptureGr
         if (kIOMasterPortDefault && IOServiceGetMatchingService && IOObjectRelease) {
             char AppleHXCamIn[14];
             for (HVer = MAX_HVER; HVer > 9; --HVer) {
-                sprintf(AppleHXCamIn, "AppleH%dCamIn", HVer);
+                snprintf(AppleHXCamIn, 14, "AppleH%dCamIn", HVer);
                 mach_port_t hx = IOServiceGetMatchingService(*kIOMasterPortDefault, IOServiceMatching(AppleHXCamIn));
                 if (hx) {
                     IOObjectRelease(hx);
@@ -71,7 +72,7 @@ int (*SetTorchLevelWithGroup)(CFNumberRef, HXISPCaptureStreamRef, HXISPCaptureGr
     }
     if (HVer == 0) return;
     char imagePath[49];
-    sprintf(imagePath, "/System/Library/MediaCapture/H%dISP.mediacapture", HVer);
+    snprintf(imagePath, 49, "/System/Library/MediaCapture/H%dISP.mediacapture", HVer);
     dlopen(imagePath, RTLD_LAZY);
     MSImageRef hxRef = MSGetImageByName(imagePath);
     switch (HVer) {
@@ -83,11 +84,11 @@ int (*SetTorchLevelWithGroup)(CFNumberRef, HXISPCaptureStreamRef, HXISPCaptureGr
         }
         default: {
             char SetTorchLevelWithGroupSymbol[88];
-            sprintf(SetTorchLevelWithGroupSymbol, "__ZL13SetTorchLevelPKvP19H%dISPCaptureStreamP18H%dISPCaptureGroupP19H%dISPCaptureDevice", HVer, HVer, HVer);
+            snprintf(SetTorchLevelWithGroupSymbol, 88, "__ZL13SetTorchLevelPKvP19H%dISPCaptureStreamP18H%dISPCaptureGroupP19H%dISPCaptureDevice", HVer, HVer, HVer);
             SetTorchLevelWithGroup = (int (*)(CFNumberRef, HXISPCaptureStreamRef, HXISPCaptureGroupRef, HXISPCaptureDeviceRef))MSFindSymbol(hxRef, SetTorchLevelWithGroupSymbol);
             if (SetTorchLevelWithGroup == NULL) {
                 char SetTorchLevelSymbol[67];
-                sprintf(SetTorchLevelSymbol, "__ZL13SetTorchLevelPKvP19H%dISPCaptureStreamP19H%dISPCaptureDevice", HVer, HVer);
+                snprintf(SetTorchLevelSymbol, 67, "__ZL13SetTorchLevelPKvP19H%dISPCaptureStreamP19H%dISPCaptureDevice", HVer, HVer);
                 SetTorchLevel = (int (*)(CFNumberRef, HXISPCaptureStreamRef, HXISPCaptureDeviceRef))MSFindSymbol(hxRef, SetTorchLevelSymbol);
             }
             break;
