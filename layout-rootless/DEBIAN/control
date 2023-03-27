@@ -1,5 +1,5 @@
 Package: com.ps.quadhighcurrent-rootless
-Name: QuadHighCurrent
+Name: QuadHighCurrent (Rootless)
 Depends: mobilesubstrate, firmware (>= 14.0), gsc.camera-flash
 Version: 1.0.0
 Architecture: iphoneos-arm
