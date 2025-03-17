@@ -5,7 +5,6 @@ TARGET = iphone:clang:14.5:10.0
 export PREFIX = $(THEOS)/toolchain/Xcode11.xctoolchain/usr/bin/
 endif
 ARCHS = arm64 arm64e
-PACKAGE_VERSION = 1.1.2
 
 include $(THEOS)/makefiles/common.mk
 
